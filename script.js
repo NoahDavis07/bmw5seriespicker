@@ -1,195 +1,71 @@
 /*
- * Noah's BMW 5 Series Performance Picker
+ * Noah Davis — G30 / F90 BMW 5 Series Picker
  *
- * PURPOSE
- * -------
- * This picker compares BMW G30/F90 5 Series models using:
- * - Purchase budget
- * - Modification budget
- * - WHP goal
- * - Drivetrain
- * - Main use
- * - Priority
- * - Modification level
- *
- * IMPORTANT
- * ---------
- * WHP = wheel horsepower, not crank horsepower.
- *
- * Build prices are planning ranges, not guaranteed quotes.
- * Actual pricing depends on:
- * - exact model year
- * - engine revision
- * - ECU unlock requirements
- * - fuel used
- * - labor
- * - turbo choice
- * - fueling system
- * - transmission work
- * - cooling
- * - engine condition
- * - supporting maintenance
- *
- * HIGH-POWER BUILDS
- * -----------------
- * 800-1000 WHP builds can vary dramatically.
- * A 1000-WHP "capable" setup is NOT the same thing as a
- * reliable 1000-WHP daily-driver setup.
+ * WHP means wheel horsepower.
+ * Prices and power figures are planning estimates.
+ * Reliability categories are project rules, not measured failure rates.
+ * Every recommendation requires checking the actual car and build.
  */
 
 (() => {
     "use strict";
 
-    // ------------------------------------------------------------
-    // BUILD PLAN HELPER
-    // ------------------------------------------------------------
-
-    const plan = (
+    // Creates a consistently structured modification plan.
+    const plan = (level, whp, low, high, label, options = {}) => ({
         level,
         whp,
         low,
         high,
         label,
-        details,
-        fuel = "Varies",
-        engineBuild = false,
-        transmissionBuild = false,
-        confidence = "Moderate"
-    ) => ({
-        level,
-        whp,
-        low,
-        high,
-        label,
-        details,
-        fuel,
-        engineBuild,
-        transmissionBuild,
-        confidence
+        fuel:
+            options.fuel ||
+            "Premium pump fuel / ethanol blend as required by calibration",
+        hardware: options.hardware || [],
+        notes: options.notes || "",
+        confidence: options.confidence || "medium",
+        engineBuild: Boolean(options.engineBuild),
+        transmissionBuild: Boolean(options.transmissionBuild),
+        customOnly: Boolean(options.customOnly)
     });
 
-    // ------------------------------------------------------------
-    // ENGINE GENERATION GUIDE
-    // ------------------------------------------------------------
-
-    const engineGuide = {
-        B58: {
-            family: "BMW B58 3.0L turbo inline-six",
-            revisions: [
-                {
-                    name: "Original B58 / Gen 1",
-                    codes: "Examples: B58B30M0 / B58B30O0",
-                    description:
-                        "First-generation B58 architecture used in cars such as early G30 540i models."
-                },
-                {
-                    name: "B58TU / Gen 2",
-                    codes: "Examples: B58B30M1 / B58B30O1",
-                    description:
-                        "Technical-update B58 with revised fueling, cooling, cylinder-head and supporting systems depending on application."
-                },
-                {
-                    name: "B58TU2",
-                    codes: "Later BMW applications",
-                    description:
-                        "Further-developed B58 generation used in newer BMW platforms after the original B58TU."
-                },
-                {
-                    name: "B58TU3",
-                    codes: "Newest-generation applications",
-                    description:
-                        "Latest major B58 evolution. Not used in the G30 540i profiles modeled here."
-                }
-            ]
-        },
-
-        N63: {
-            family: "BMW N63 4.4L twin-turbo V8",
-            revisions: [
-                {
-                    name: "Original N63",
-                    description:
-                        "Original hot-V twin-turbo N63 architecture."
-                },
-                {
-                    name: "N63TU",
-                    description:
-                        "First major technical update to the original N63."
-                },
-                {
-                    name: "N63TU2",
-                    description:
-                        "Later revision used in early G30 M550i applications."
-                },
-                {
-                    name: "N63TU3",
-                    description:
-                        "Major later revision used in 2020+ G30 M550i models."
-                },
-                {
-                    name: "N63TU3 M3 / T3 variants",
-                    description:
-                        "Different output/application versions exist inside the N63TU3 family. The M550i uses a high-output variant."
-                }
-            ]
-        },
-
-        S63: {
-            family: "BMW S63 high-performance 4.4L twin-turbo V8",
-            revisions: [
-                {
-                    name: "Original S63",
-                    description:
-                        "Early BMW M hot-V twin-turbo V8."
-                },
-                {
-                    name: "S63TU",
-                    description:
-                        "First major technical update."
-                },
-                {
-                    name: "S63TU2",
-                    description:
-                        "Previous-generation high-performance revision."
-                },
-                {
-                    name: "S63TU4",
-                    codes: "S63B44T4",
-                    description:
-                        "Engine used by the F90 M5 generation modeled here. It incorporates major developments derived from later N63 architecture."
-                }
-            ]
-        }
+    const engineGlossary = {
+        b58: [
+            "Original B58 / Gen 1 — examples include B58B30M0. Used by the early G30 540i profile here.",
+            "B58TU / Gen 2 — examples include B58B30M1 and higher-output O1 variants. This picker separates the later G30 540i from the original B58 car.",
+            "B58TU2 / Gen 3 — newer applications outside this G30 picker. Parts and tuning information should not automatically be transferred between generations.",
+            "Later B58 revisions, including TU3 references, are outside this picker. Verify the exact engine code, market and production date."
+        ],
+        n63: [
+            "Original N63 — N63B44O0. Not the engine used by the G30 M550i profiles here.",
+            "N63TU — N63B44O1. First major technical update; not the G30 M550i engine profile used here.",
+            "N63TU2 — N63B44O2 / N63R. Used by the 2018–2019 M550i profile.",
+            "N63TU3 — includes N63B44M3 and the higher-output N63B44T3. The 2020–2023 M550i profile uses N63B44T3.",
+            "There is no G30-era N63TU4 profile in this picker. Newer BMW V8 applications can use the S68 family."
+        ],
+        s63: [
+            "Original S63 — S63B44O0, associated with the E70/E71 X5 M/X6 M generation.",
+            "S63TU — S63B44T0, used by F10 M5/F1x M6 applications.",
+            "S63TU2 — S63B44T2, used by F85/F86 X5 M/X6 M applications.",
+            "S63TU4 — S63B44T4. Used by the F90 M5, M5 Competition and M5 CS profiles here.",
+            "Do not assume a separate F90 S63TU3 profile. Verify the engine code rather than relying only on a TU nickname."
+        ]
     };
 
-    // ------------------------------------------------------------
-    // VEHICLE DATABASE
-    // ------------------------------------------------------------
-
+    // CAR DATA
+    // Each ID connects a car to its reliability profile further below.
     const cars = [
-
-        // ========================================================
-        // BMW 530i
-        // ========================================================
-
         {
-            id: "530-b48",
+            id: "530-17-19",
             name: "BMW 530i",
             generation: "G30",
-            years: "2017–2023",
-
-            engine: "B48 2.0L turbo inline-four",
-            engineCode: "B48 family",
-            engineGeneration: "B48",
-
-            transmission: "ZF 8HP automatic",
-
-            startingPrice: 15000,
-
+            years: "2017–2019",
+            engine: "B46/B48-family 2.0T (market-dependent emissions specification)",
+            engineFamily: "B46/B48",
+            engineRevision: "early G30 four-cylinder",
+            transmission: "ZF 8HP",
+            startingPrice: 14000,
             drivetrains: ["rwd", "awd"],
-
-            stockWhp: [210, 240],
-
+            stockWhp: [210, 235],
             traits: {
                 cost: 5,
                 comfort: 5,
@@ -198,188 +74,162 @@
                 track: 1,
                 rarity: 1
             },
-
             builds: [
-
-                plan(
-                    1,
-                    270,
-                    1200,
-                    3000,
-                    "Basic tuned setup",
-                    [
+                plan(1, 300, 1000, 2500, "Basic tuned street setup", {
+                    hardware: [
                         "ECU tune",
-                        "Fresh spark plugs",
-                        "Basic maintenance",
-                        "Optional intake",
-                        "Optional charge pipe",
-                        "Quality premium fuel"
+                        "fresh plugs",
+                        "optional intake/downpipe where legal"
+                    ]
+                }),
+                plan(2, 400, 6000, 11000, "Upgraded-turbo four-cylinder build", {
+                    hardware: [
+                        "turbo upgrade",
+                        "fueling as required",
+                        "charge/cooling upgrades",
+                        "custom tune"
+                    ]
+                }),
+                plan(2, 500, 10000, 18000, "Built-supporting-system 500-WHP build", {
+                    hardware: [
+                        "larger turbo",
+                        "fuel system",
+                        "cooling",
+                        "custom calibration",
+                        "driveline allowance"
                     ],
-                    "93 octane",
-                    false,
-                    false,
-                    "High"
-                ),
-
-                plan(
-                    1,
-                    320,
-                    2500,
-                    5000,
-                    "Full bolt-on setup",
-                    [
-                        "ECU tune",
-                        "Downpipe",
-                        "Intake",
-                        "Charge-pipe upgrades",
-                        "Intercooling / heat-management improvements",
-                        "Fresh ignition components"
+                    notes:
+                        "At this output the 530i stops being the cost-efficient choice versus a 540i.",
+                    confidence: "low"
+                }),
+                plan(2, 600, 16000, 27000, "Custom 600-WHP four-cylinder build", {
+                    hardware: [
+                        "built engine strongly recommended",
+                        "large turbo",
+                        "full fueling",
+                        "cooling",
+                        "transmission/driveline strategy"
                     ],
-                    "93 octane / ethanol blend depending on tune",
-                    false,
-                    false,
-                    "Moderate"
-                ),
-
-                plan(
-                    2,
-                    350,
-                    7000,
-                    14000,
-                    "Upgraded turbo setup",
-                    [
-                        "Upgraded turbo",
-                        "Custom tune",
-                        "Fueling upgrades as required",
-                        "Cooling upgrades",
-                        "Downpipe",
-                        "Intake",
-                        "Charge-pipe upgrades",
-                        "Transmission calibration"
-                    ],
-                    "Ethanol blend or race fuel may be required",
-                    false,
-                    false,
-                    "Moderate"
-                ),
-
-                plan(
-                    2,
-                    450,
-                    12000,
-                    22000,
-                    "Extreme B48 build",
-                    [
-                        "Large upgraded turbo",
-                        "Advanced fueling",
-                        "Custom ECU calibration",
-                        "Cooling system upgrades",
-                        "Exhaust upgrades",
-                        "Transmission support",
-                        "Engine-health inspection"
-                    ],
-                    "Ethanol / race-fuel oriented",
-                    true,
-                    true,
-                    "Low"
-                ),
-
-                plan(
-                    2,
-                    600,
-                    20000,
-                    35000,
-                    "Built-engine B48 race-oriented build",
-                    [
-                        "Forged engine internals",
-                        "Large turbo system",
-                        "Full fuel-system upgrade",
-                        "Custom ECU tuning",
-                        "Extensive cooling upgrades",
-                        "Transmission build",
-                        "Driveline upgrades",
-                        "Race-oriented supporting hardware"
-                    ],
-                    "Ethanol / race fuel",
-                    true,
-                    true,
-                    "Low"
-                ),
-
-                plan(
-                    2,
-                    800,
-                    30000,
-                    50000,
-                    "Custom race-development B48 build",
-                    [
-                        "Fully built engine",
-                        "Large custom turbo system",
-                        "Full fuel-system conversion",
-                        "Standalone or highly customized engine management may be required",
-                        "Built transmission",
-                        "Custom driveline",
-                        "Extensive fabrication",
-                        "Race-only cooling strategy"
-                    ],
-                    "Race fuel / ethanol",
-                    true,
-                    true,
-                    "Very Low"
-                ),
-
+                    engineBuild: true,
+                    customOnly: true,
+                    confidence: "low"
+                }),
+                plan(2, 700, 25000, 40000, "Race-oriented 700-WHP build", {
+                    engineBuild: true,
+                    transmissionBuild: true,
+                    customOnly: true,
+                    confidence: "low",
+                    hardware: [
+                        "forged engine",
+                        "large-frame turbo",
+                        "complete fuel system",
+                        "transmission build",
+                        "axles/driveline",
+                        "thermal management"
+                    ]
+                }),
+                plan(2, 800, 35000, 55000, "Extreme custom 800-WHP build", {
+                    engineBuild: true,
+                    transmissionBuild: true,
+                    customOnly: true,
+                    confidence: "low"
+                }),
+                plan(2, 900, 50000, 75000, "Extreme custom 900-WHP build", {
+                    engineBuild: true,
+                    transmissionBuild: true,
+                    customOnly: true,
+                    confidence: "low"
+                }),
                 plan(
                     2,
                     1000,
-                    45000,
                     70000,
-                    "1000-WHP custom B48 development project",
-                    [
-                        "Fully built race engine",
-                        "Custom turbo system",
-                        "Custom intake and exhaust fabrication",
-                        "Full fuel system",
-                        "Built transmission",
-                        "Upgraded differential / axles",
-                        "Extensive engine-management work",
-                        "Extensive cooling",
-                        "Dyno development",
-                        "Significant fabrication"
-                    ],
-                    "Race fuel / ethanol",
-                    true,
-                    true,
-                    "Experimental"
+                    105000,
+                    "1000-WHP race-development build",
+                    {
+                        engineBuild: true,
+                        transmissionBuild: true,
+                        customOnly: true,
+                        confidence: "very low",
+                        notes:
+                            "A custom motorsport-development allowance, not a proven off-the-shelf street recipe or guaranteed result."
+                    }
                 )
             ],
-
             note:
-                "The 530i is a comfort-and-efficiency starting point, not the normal choice for very high power. " +
-                "High-WHP numbers are custom race-development territory rather than normal bolt-on builds."
+                "Best when the priority is purchase/running cost. For big-power goals, the supporting work can erase the savings versus starting with a 540i."
         },
-
-        // ========================================================
-        // EARLY BMW 540i - ORIGINAL B58
-        // ========================================================
-
         {
-            id: "540-b58-gen1",
+            id: "530-20-23",
+            name: "BMW 530i",
+            generation: "G30",
+            years: "2020–2023",
+            engine: "B46TU/B48TU-family 2.0T (market-dependent emissions specification)",
+            engineFamily: "B46/B48",
+            engineRevision: "TU-era G30 four-cylinder",
+            transmission: "ZF 8HP51-family",
+            startingPrice: 18000,
+            drivetrains: ["rwd", "awd"],
+            stockWhp: [210, 235],
+            traits: {
+                cost: 4.5,
+                comfort: 5,
+                tuning: 2,
+                performance: 1.6,
+                track: 1,
+                rarity: 1
+            },
+            builds: [
+                plan(1, 300, 1000, 2500, "Basic tuned street setup"),
+                plan(2, 400, 6000, 11000, "Upgraded-turbo four-cylinder build"),
+                plan(2, 500, 10000, 18000, "Built-supporting-system 500-WHP build", {
+                    confidence: "low"
+                }),
+                plan(2, 600, 16000, 27000, "Custom 600-WHP four-cylinder build", {
+                    engineBuild: true,
+                    customOnly: true,
+                    confidence: "low"
+                }),
+                plan(2, 700, 25000, 40000, "Race-oriented 700-WHP build", {
+                    engineBuild: true,
+                    transmissionBuild: true,
+                    customOnly: true,
+                    confidence: "low"
+                }),
+                plan(2, 800, 35000, 55000, "Extreme custom 800-WHP build", {
+                    engineBuild: true,
+                    transmissionBuild: true,
+                    customOnly: true,
+                    confidence: "low"
+                }),
+                plan(2, 900, 50000, 75000, "Extreme custom 900-WHP build", {
+                    engineBuild: true,
+                    transmissionBuild: true,
+                    customOnly: true,
+                    confidence: "low"
+                }),
+                plan(2, 1000, 70000, 105000, "1000-WHP race-development build", {
+                    engineBuild: true,
+                    transmissionBuild: true,
+                    customOnly: true,
+                    confidence: "very low"
+                })
+            ],
+            note:
+                "Later 530i profile. Still a poor economic starting point for extreme power compared with a six-cylinder 540i."
+        },
+        {
+            id: "540-gen1",
             name: "BMW 540i",
             generation: "G30",
             years: "2017–2019",
-
-            engine: "B58 3.0L turbo inline-six",
-            engineCode: "B58B30M0",
-            engineGeneration: "Original B58 / Gen 1",
-
-            transmission: "ZF 8HP automatic",
-
-            startingPrice: 19000,
-
+            engine: "B58B30M0",
+            engineFamily: "B58",
+            engineRevision: "Original B58 / Gen 1",
+            transmission: "ZF 8HP50-family",
+            startingPrice: 18000,
             drivetrains: ["rwd", "awd"],
-
-            stockWhp: [290, 330],
-
+            stockWhp: [290, 325],
             traits: {
                 cost: 4,
                 comfort: 5,
@@ -388,1094 +238,492 @@
                 track: 2.5,
                 rarity: 1
             },
-
             builds: [
-
-                plan(
-                    1,
-                    400,
-                    1500,
-                    3500,
-                    "Stage 1 / mild bolt-on B58 build",
-                    [
+                plan(1, 400, 1000, 2500, "Pump-gas tune / basic bolt-ons", {
+                    hardware: [
                         "ECU tune",
-                        "Fresh spark plugs",
-                        "Optional intake",
-                        "Transmission tune",
-                        "Maintenance baseline"
+                        "fresh plugs",
+                        "optional intake/downpipe where legal"
+                    ]
+                }),
+                plan(2, 500, 2500, 5500, "Full-bolt-on / ethanol-blend setup", {
+                    hardware: [
+                        "custom tune",
+                        "downpipe where legal",
+                        "cooling/charge-path service",
+                        "fuel-quality support"
+                    ]
+                }),
+                plan(2, 600, 5000, 9000, "600-WHP hybrid-turbo build", {
+                    hardware: [
+                        "hybrid turbo",
+                        "fueling upgrade",
+                        "custom tune",
+                        "cooling/supporting hardware"
+                    ]
+                }),
+                plan(2, 700, 8000, 14000, "700-WHP turbo + fueling build", {
+                    fuel:
+                        "Ethanol blend/E85-type fuel commonly required at this level",
+                    hardware: [
+                        "larger hybrid or single turbo",
+                        "HPFP/LPFP and/or port injection",
+                        "custom tune",
+                        "transmission calibration",
+                        "cooling"
+                    ]
+                }),
+                plan(2, 800, 12000, 20000, "800-WHP big-turbo build", {
+                    hardware: [
+                        "large hybrid/single turbo",
+                        "complete fueling",
+                        "custom tune",
+                        "transmission strategy",
+                        "driveline/cooling allowance"
                     ],
-                    "93 octane",
-                    false,
-                    false,
-                    "High"
-                ),
-
-                plan(
-                    1,
-                    500,
-                    3000,
-                    6500,
-                    "Full bolt-on / ethanol-blend setup",
-                    [
-                        "ECU tune",
-                        "Downpipe",
-                        "Intake",
-                        "Upgraded charge pipe where needed",
-                        "Transmission tune",
-                        "Fueling support depending on ethanol concentration",
-                        "Cooling improvements"
+                    confidence: "medium-low"
+                }),
+                plan(2, 900, 18000, 30000, "900-WHP built-supporting-system build", {
+                    engineBuild: true,
+                    transmissionBuild: true,
+                    hardware: [
+                        "forged engine budget strongly recommended",
+                        "large single turbo",
+                        "full fuel system",
+                        "built transmission",
+                        "axles/driveshaft allowance"
                     ],
-                    "E30-E50 / ethanol blend",
-                    false,
-                    false,
-                    "High"
-                ),
-
-                plan(
-                    2,
-                    600,
-                    6500,
-                    11000,
-                    "Upgraded hybrid-turbo setup",
-                    [
-                        "Hybrid turbo",
-                        "Upgraded HPFP",
-                        "LPFP upgrade as required",
-                        "Downpipe",
-                        "Custom tune",
-                        "Transmission tune",
-                        "Cooling upgrades",
-                        "Fresh ignition system"
-                    ],
-                    "Ethanol blend",
-                    false,
-                    false,
-                    "High"
-                ),
-
-                plan(
-                    2,
-                    700,
-                    9000,
-                    15000,
-                    "700-WHP Gen-1 B58 setup",
-                    [
-                        "Large hybrid or small single turbo",
-                        "Upgraded HPFP",
-                        "LPFP upgrade",
-                        "Supplemental or port fueling depending on setup",
-                        "Flex-fuel / ethanol capability",
-                        "Custom ECU tune",
-                        "Transmission tune",
-                        "Cooling upgrades",
-                        "Downpipe",
-                        "Supporting maintenance"
-                    ],
-                    "E50-E85 depending on tune",
-                    false,
-                    false,
-                    "High"
-                ),
-
-                plan(
-                    2,
-                    800,
-                    13000,
-                    22000,
-                    "800-WHP big-turbo Gen-1 B58 setup",
-                    [
-                        "Big single or high-output hybrid turbo",
-                        "Upgraded HPFP",
-                        "Upgraded LPFP",
-                        "Port injection / supplemental fueling",
-                        "Flex-fuel sensor",
-                        "Custom tune",
-                        "Transmission upgrades",
-                        "Cooling upgrades",
-                        "Upgraded engine mounts recommended",
-                        "Driveline inspection"
-                    ],
-                    "Ethanol / race fuel",
-                    false,
-                    true,
-                    "Moderate"
-                ),
-
-                plan(
-                    2,
-                    900,
-                    19000,
-                    32000,
-                    "900-WHP Gen-1 B58 build",
-                    [
-                        "Large single turbo",
-                        "Full upgraded fuel system",
-                        "Port injection",
-                        "Custom calibration",
-                        "Built or heavily upgraded ZF8",
-                        "Cooling package",
-                        "Crankcase ventilation upgrades",
-                        "Engine-health verification",
-                        "Driveline upgrades"
-                    ],
-                    "E85 / race fuel",
-                    true,
-                    true,
-                    "Moderate"
-                ),
-
+                    confidence: "medium-low"
+                }),
                 plan(
                     2,
                     1000,
                     28000,
                     45000,
-                    "1000-WHP built Gen-1 B58 setup",
-                    [
-                        "Forged engine internals",
-                        "Built cylinder head as required",
-                        "Large-frame single turbo",
-                        "Full fuel system",
-                        "Port injection",
-                        "Upgraded LPFP",
-                        "Upgraded HPFP or alternate high-pressure strategy",
-                        "Custom ECU tuning",
-                        "Built ZF8 transmission",
-                        "Axle / driveshaft allowance",
-                        "Differential inspection or upgrade",
-                        "Cooling upgrades",
-                        "Catch-can / crankcase ventilation system",
-                        "Dyno development"
-                    ],
-                    "E85 / race fuel",
-                    true,
-                    true,
-                    "Moderate"
+                    "1000-WHP forged-engine / built-ZF big-single build",
+                    {
+                        engineBuild: true,
+                        transmissionBuild: true,
+                        customOnly: true,
+                        fuel: "High-ethanol/race-fuel strategy",
+                        hardware: [
+                            "forged long block",
+                            "1000-WHP-class turbo system",
+                            "port injection/full low-side fuel system",
+                            "built ZF8",
+                            "axles/driveshaft",
+                            "cooling",
+                            "custom dyno calibration"
+                        ],
+                        notes:
+                            "A 1000-WHP-capable turbo alone is not a complete 1000-WHP build.",
+                        confidence: "medium-low"
+                    }
                 )
             ],
-
             note:
-                "Early G30 540i models use the original B58 generation. They are excellent tuning platforms, " +
-                "but 800-1000 WHP requires much more than a turbo swap."
+                "Early G30 540i B58. Verify the exact DME/unlock, emissions hardware, fuel system and transmission by VIN/build date."
         },
-
-        // ========================================================
-        // LATER BMW 540i - B58TU
-        // ========================================================
-
         {
-            id: "540-b58tu",
+            id: "540-tu",
             name: "BMW 540i",
             generation: "G30",
             years: "2020–2023",
-
-            engine: "B58 3.0L turbo inline-six",
-            engineCode: "B58B30M1",
-            engineGeneration: "B58TU / Gen 2",
-
-            transmission: "ZF 8HP automatic",
-
-            startingPrice: 28000,
-
+            engine: "B58B30M1",
+            engineFamily: "B58",
+            engineRevision: "B58TU / Gen 2; 2021+ adds 48-V mild hybrid",
+            transmission: "ZF 8HP51-family",
+            startingPrice: 24000,
             drivetrains: ["rwd", "awd"],
-
-            stockWhp: [310, 350],
-
+            stockWhp: [295, 330],
             traits: {
-                cost: 3.5,
+                cost: 3.8,
                 comfort: 5,
                 tuning: 5,
-                performance: 4.2,
-                track: 2.5,
+                performance: 4.1,
+                track: 2.6,
                 rarity: 1
             },
-
             builds: [
-
-                plan(
-                    1,
-                    420,
-                    1800,
-                    4000,
-                    "Stage 1 B58TU setup",
-                    [
-                        "ECU tune",
-                        "Possible ECU unlock depending on production date",
-                        "Transmission tune",
-                        "Fresh spark plugs",
-                        "Maintenance baseline"
-                    ],
-                    "93 octane",
-                    false,
-                    false,
-                    "High"
-                ),
-
-                plan(
-                    1,
-                    520,
-                    3500,
-                    7000,
-                    "Full bolt-on B58TU setup",
-                    [
-                        "ECU tune",
-                        "Downpipe",
-                        "Intake",
-                        "Transmission tune",
-                        "Flex-fuel / ethanol support",
-                        "Cooling improvements",
-                        "Fueling upgrades if required"
-                    ],
-                    "Ethanol blend",
-                    false,
-                    false,
-                    "High"
-                ),
-
-                plan(
-                    2,
-                    600,
-                    6500,
-                    11000,
-                    "Hybrid-turbo B58TU setup",
-                    [
-                        "Upgraded hybrid turbo",
-                        "Fuel-system support",
-                        "Custom tuning",
-                        "Downpipe",
-                        "Transmission tune",
-                        "Cooling upgrades",
-                        "Ignition maintenance"
-                    ],
-                    "Ethanol blend",
-                    false,
-                    false,
-                    "High"
-                ),
-
-                plan(
-                    2,
-                    700,
-                    8500,
-                    14000,
-                    "700-WHP B58TU setup",
-                    [
-                        "Hybrid or single turbo",
-                        "Upgraded fuel-system components",
-                        "LPFP upgrade as required",
-                        "Flex-fuel",
-                        "Custom ECU tune",
-                        "Transmission tune",
-                        "Cooling upgrades",
-                        "Downpipe",
-                        "Supporting maintenance"
-                    ],
-                    "Ethanol blend",
-                    false,
-                    false,
-                    "High"
-                ),
-
-                plan(
-                    2,
-                    800,
-                    12000,
-                    20000,
-                    "800-WHP B58TU setup",
-                    [
-                        "Large hybrid or single turbo",
-                        "Full low-pressure fueling support",
-                        "Supplemental / port fueling if required",
-                        "Flex-fuel",
-                        "Custom tuning",
-                        "ZF8 upgrades",
-                        "Cooling package",
-                        "Driveline inspection"
-                    ],
-                    "Ethanol / race fuel",
-                    false,
-                    true,
-                    "Moderate"
-                ),
-
+                plan(1, 400, 1000, 2800, "Pump-gas tune / basic bolt-ons"),
+                plan(2, 500, 2800, 6000, "Full-bolt-on / ethanol-blend setup"),
+                plan(2, 600, 5200, 9500, "600-WHP hybrid-turbo build"),
+                plan(2, 700, 8000, 14000, "700-WHP hybrid-turbo + fueling build"),
+                plan(2, 800, 12000, 20000, "800-WHP upgraded-turbo build"),
                 plan(
                     2,
                     900,
                     18000,
                     30000,
-                    "900-WHP B58TU build",
-                    [
-                        "Large single turbo",
-                        "Advanced fuel system",
-                        "Supplemental fueling",
-                        "Custom ECU calibration",
-                        "Built or upgraded ZF8",
-                        "Cooling system",
-                        "Driveline upgrades",
-                        "Engine-health assessment"
-                    ],
-                    "E85 / race fuel",
-                    true,
-                    true,
-                    "Moderate"
+                    "900-WHP big-single / built-supporting-system build",
+                    {
+                        engineBuild: true,
+                        transmissionBuild: true,
+                        confidence: "medium-low"
+                    }
                 ),
-
                 plan(
                     2,
                     1000,
-                    26000,
-                    42000,
-                    "1000-WHP built B58TU setup",
-                    [
-                        "Forged engine internals",
-                        "Large single turbo",
-                        "Full fueling system",
-                        "Supplemental fueling",
-                        "Flex-fuel system",
-                        "Custom ECU calibration",
-                        "Built transmission",
-                        "Axles / driveshaft allowance",
-                        "Cooling upgrades",
-                        "Crankcase ventilation upgrades",
-                        "Dyno development"
-                    ],
-                    "E85 / race fuel",
-                    true,
-                    true,
-                    "Moderate"
+                    28000,
+                    46000,
+                    "1000-WHP forged-engine / built-ZF big-single build",
+                    {
+                        engineBuild: true,
+                        transmissionBuild: true,
+                        customOnly: true,
+                        hardware: [
+                            "forged engine",
+                            "1000-WHP-class turbo",
+                            "full low-side + supplemental/port fuel system",
+                            "built transmission",
+                            "driveline",
+                            "cooling",
+                            "custom calibration"
+                        ],
+                        confidence: "medium-low"
+                    }
                 )
             ],
-
             note:
-                "B58TU models have revised engine and fuel-system architecture compared with the original B58. " +
-                "ECU unlock requirements must be checked using the exact production date."
+                "Do not mix Gen-1 and B58TU turbo/fueling parts. Verify cylinder-head/turbo compatibility, fueling and DME requirements for the exact car."
         },
-
-        // ========================================================
-        // EARLY M550i - N63TU2
-        // ========================================================
-
         {
-            id: "m550-n63tu2",
+            id: "m550-tu2",
             name: "BMW M550i xDrive",
             generation: "G30",
             years: "2018–2019",
-
-            engine: "N63 4.4L twin-turbo V8",
-            engineCode: "N63B44O2",
-            engineGeneration: "N63TU2",
-
-            transmission: "ZF 8HP automatic",
-
-            startingPrice: 25000,
-
+            engine: "N63B44O2",
+            engineFamily: "N63",
+            engineRevision: "N63TU2 / N63R",
+            transmission: "ZF 8HP75X-family",
+            startingPrice: 23000,
             drivetrains: ["awd"],
-
-            stockWhp: [400, 460],
-
+            stockWhp: [400, 440],
             traits: {
-                cost: 2,
+                cost: 2.3,
                 comfort: 5,
                 tuning: 3.5,
-                performance: 3.7,
+                performance: 3.5,
                 track: 2,
                 rarity: 2
             },
-
             builds: [
-
-                plan(
-                    1,
-                    550,
-                    2000,
-                    4500,
-                    "Stage 1 N63TU2 setup",
-                    [
-                        "ECU tune",
-                        "Transmission tune",
-                        "Fresh plugs",
-                        "Maintenance baseline",
-                        "Cooling-system inspection"
-                    ],
-                    "93 octane",
-                    false,
-                    false,
-                    "High"
-                ),
-
-                plan(
-                    1,
-                    600,
-                    3500,
-                    7000,
-                    "Full bolt-on N63TU2 setup",
-                    [
-                        "ECU tune",
-                        "Downpipes",
-                        "Intake / filter upgrades",
-                        "Transmission tune",
-                        "Cooling inspection",
-                        "Fresh ignition components"
-                    ],
-                    "93 octane / ethanol blend",
-                    false,
-                    false,
-                    "High"
-                ),
-
-                plan(
-                    2,
-                    700,
-                    9000,
-                    16000,
-                    "700-WHP N63TU2 setup",
-                    [
-                        "Upgraded turbos",
-                        "Downpipes",
-                        "Fueling upgrades",
-                        "Custom ECU tune",
-                        "Transmission tune",
-                        "Cooling upgrades",
-                        "Ignition upgrades",
-                        "Maintenance reserve"
-                    ],
-                    "Ethanol blend",
-                    false,
-                    false,
-                    "Moderate"
-                ),
-
-                plan(
-                    2,
-                    800,
-                    14000,
-                    23000,
-                    "800-WHP N63TU2 build",
-                    [
-                        "Higher-output upgraded turbos",
-                        "Full fueling support",
-                        "Custom tuning",
-                        "Transmission upgrades",
-                        "Cooling upgrades",
-                        "Heat-management upgrades",
-                        "Driveline inspection",
-                        "Preventive maintenance"
-                    ],
-                    "Ethanol / race fuel",
-                    false,
-                    true,
-                    "Moderate"
-                ),
-
+                plan(1, 600, 1800, 4500, "Tune + bolt-on 600-WHP-class setup"),
+                plan(2, 700, 7000, 12000, "Upgraded-turbo 700-WHP build"),
+                plan(2, 800, 12000, 21000, "800-WHP custom turbo/fueling build", {
+                    confidence: "medium-low"
+                }),
                 plan(
                     2,
                     900,
-                    22000,
-                    36000,
-                    "900-WHP built N63TU2 setup",
-                    [
-                        "Built engine recommended",
-                        "Large upgraded turbo system",
-                        "Full fuel system",
-                        "Custom calibration",
-                        "Built transmission",
-                        "Cooling upgrades",
-                        "Driveline upgrades",
-                        "Extensive heat management"
-                    ],
-                    "E85 / race fuel",
-                    true,
-                    true,
-                    "Low"
+                    20000,
+                    33000,
+                    "900-WHP built-supporting-system N63TU2 build",
+                    {
+                        engineBuild: true,
+                        transmissionBuild: true,
+                        customOnly: true,
+                        confidence: "low"
+                    }
                 ),
-
-                plan(
-                    2,
-                    1000,
-                    32000,
-                    50000,
-                    "1000-WHP N63TU2 build",
-                    [
-                        "Forged engine",
-                        "Large upgraded turbos",
-                        "Full fuel system",
-                        "Custom ECU calibration",
-                        "Built transmission",
-                        "Upgraded driveline components",
-                        "Extensive cooling",
-                        "Crankcase ventilation improvements",
-                        "Dyno development"
+                plan(2, 1000, 32000, 52000, "1000-WHP forged N63TU2 custom build", {
+                    engineBuild: true,
+                    transmissionBuild: true,
+                    customOnly: true,
+                    hardware: [
+                        "forged engine",
+                        "custom/high-flow turbo system",
+                        "complete fueling",
+                        "built transmission",
+                        "cooling/heat management",
+                        "driveline",
+                        "custom calibration"
                     ],
-                    "E85 / race fuel",
-                    true,
-                    true,
-                    "Low"
-                )
+                    notes:
+                        "Treat this as a custom development project requiring a specialist assessment.",
+                    confidence: "low"
+                })
             ],
-
             note:
-                "Early M550i models use N63TU2. They can make substantial power, but maintenance and heat management " +
-                "should be treated as part of the build budget."
+                "Earlier M550i uses N63TU2. Cooling-system condition and maintenance need their own budget, separate from power modifications."
         },
-
-        // ========================================================
-        // LATER M550i - N63TU3
-        // ========================================================
-
         {
-            id: "m550-n63tu3",
+            id: "m550-tu3",
             name: "BMW M550i xDrive",
             generation: "G30",
             years: "2020–2023",
-
-            engine: "N63 4.4L twin-turbo V8",
-            engineCode: "N63B44T3",
-            engineGeneration: "N63TU3",
-
-            transmission: "ZF 8HP automatic",
-
-            startingPrice: 35000,
-
+            engine: "N63B44T3",
+            engineFamily: "N63",
+            engineRevision: "N63TU3 / T3",
+            transmission: "ZF 8HP76X-family",
+            startingPrice: 33000,
             drivetrains: ["awd"],
-
-            stockWhp: [460, 530],
-
+            stockWhp: [460, 500],
             traits: {
                 cost: 2,
                 comfort: 5,
-                tuning: 4,
+                tuning: 3.8,
                 performance: 4,
                 track: 2.5,
                 rarity: 2
             },
-
             builds: [
-
-                plan(
-                    1,
-                    600,
-                    2500,
-                    5000,
-                    "Stage 1 N63TU3 setup",
-                    [
-                        "ECU tune",
-                        "Possible ECU unlock",
-                        "Transmission tune",
-                        "Fresh spark plugs",
-                        "Maintenance baseline"
-                    ],
-                    "93 octane",
-                    false,
-                    false,
-                    "High"
-                ),
-
-                plan(
-                    1,
-                    700,
-                    4500,
-                    8500,
-                    "Full bolt-on N63TU3 setup",
-                    [
-                        "ECU tune",
-                        "Downpipes",
-                        "Intake upgrades",
-                        "Transmission tune",
-                        "Fueling support",
-                        "Cooling inspection",
-                        "Ethanol capability"
-                    ],
-                    "Ethanol blend",
-                    false,
-                    false,
-                    "High"
-                ),
-
-                plan(
-                    2,
-                    800,
-                    9000,
-                    16000,
-                    "800-WHP N63TU3 setup",
-                    [
-                        "Upgraded turbos",
-                        "Fueling upgrades",
-                        "Custom ECU tuning",
-                        "Transmission tune",
-                        "Cooling upgrades",
-                        "Downpipes",
-                        "Heat management"
-                    ],
-                    "Ethanol blend",
-                    false,
-                    false,
-                    "Moderate"
-                ),
-
-                plan(
-                    2,
-                    900,
-                    15000,
-                    26000,
-                    "900-WHP N63TU3 build",
-                    [
-                        "Higher-output turbo system",
-                        "Full fuel-system upgrades",
-                        "Custom tuning",
-                        "Transmission upgrades",
-                        "Cooling upgrades",
-                        "Driveline inspection",
-                        "Preventive maintenance"
-                    ],
-                    "E85 / race fuel",
-                    false,
-                    true,
-                    "Moderate"
-                ),
-
+                plan(1, 600, 1500, 3500, "Tune + supporting bolt-ons"),
+                plan(2, 700, 3500, 7500, "700-WHP tune/fueling/supporting build"),
+                plan(2, 800, 7000, 13500, "800-WHP upgraded-turbo build"),
+                plan(2, 900, 12000, 22000, "900-WHP turbo/fueling/driveline build", {
+                    confidence: "medium-low"
+                }),
                 plan(
                     2,
                     1000,
-                    24000,
+                    22000,
                     40000,
-                    "1000-WHP N63TU3 build",
-                    [
-                        "Large upgraded turbo system",
-                        "Full fueling package",
-                        "Custom ECU tuning",
-                        "Built or reinforced transmission",
-                        "Engine build recommended depending on torque target",
-                        "Cooling upgrades",
-                        "Driveline upgrades",
-                        "Heat-management system",
-                        "Dyno development"
-                    ],
-                    "E85 / race fuel",
-                    true,
-                    true,
-                    "Moderate"
+                    "1000-WHP forged/supporting-system N63TU3 build",
+                    {
+                        engineBuild: true,
+                        transmissionBuild: true,
+                        customOnly: true,
+                        hardware: [
+                            "1000-WHP-class turbo system",
+                            "full fuel system",
+                            "custom calibration",
+                            "transmission build/upgrade allowance",
+                            "cooling/heat management",
+                            "forged-engine contingency"
+                        ],
+                        notes:
+                            "A complete custom build assessment is required; a turbo upgrade's advertised capacity is not a whole-car guarantee.",
+                        confidence: "medium-low"
+                    }
                 )
             ],
-
             note:
-                "N63TU3 is significantly revised compared with earlier N63 versions. " +
-                "Do not apply N63TU2 parts or power assumptions to an N63TU3 car without confirming compatibility."
+                "Later M550i uses the revised N63TU3/T3. Its different hardware does not remove the need to inspect cooling, fueling and service history."
         },
-
-        // ========================================================
-        // F90 M5
-        // ========================================================
-
         {
-            id: "m5-s63tu4",
+            id: "m5-base",
             name: "BMW M5",
             generation: "F90",
             years: "2018–2023",
-
-            engine: "S63 4.4L twin-turbo V8",
-            engineCode: "S63B44T4",
-            engineGeneration: "S63TU4",
-
-            transmission: "ZF 8HP M Steptronic",
-
-            startingPrice: 40000,
-
+            engine: "S63B44T4",
+            engineFamily: "S63",
+            engineRevision: "S63TU4",
+            transmission: "ZF 8HP76X M Steptronic / M xDrive",
+            startingPrice: 42000,
             drivetrains: ["awd"],
-
-            stockWhp: [550, 610],
-
+            stockWhp: [540, 590],
             traits: {
                 cost: 1.5,
                 comfort: 4,
                 tuning: 4.5,
-                performance: 4.7,
-                track: 4.5,
+                performance: 4.5,
+                track: 4.2,
                 rarity: 3
             },
-
             builds: [
-
-                plan(
-                    1,
-                    650,
-                    2000,
-                    4500,
-                    "Stage 1 S63TU4 setup",
-                    [
-                        "ECU tune",
-                        "Transmission tune",
-                        "Fresh ignition components",
-                        "Maintenance baseline"
+                plan(1, 650, 1200, 3200, "Tune + basic supporting mods"),
+                plan(2, 750, 3000, 6500, "Ethanol-blend / bolt-on 750-WHP setup"),
+                plan(2, 850, 6000, 11000, "Upgraded-turbo / fueling 850-WHP build"),
+                plan(2, 900, 8000, 14000, "900-WHP upgraded-turbo build"),
+                plan(2, 1000, 12000, 24000, "1000-WHP S63TU4 turbo/fueling build", {
+                    hardware: [
+                        "1000-WHP-capable turbo pair",
+                        "fueling/ethanol strategy",
+                        "custom ECU calibration",
+                        "transmission calibration",
+                        "cooling",
+                        "plugs/maintenance baseline"
                     ],
-                    "93 octane",
-                    false,
-                    false,
-                    "High"
-                ),
-
-                plan(
-                    1,
-                    750,
-                    3500,
-                    7000,
-                    "Full bolt-on S63TU4 setup",
-                    [
-                        "ECU tune",
-                        "Downpipes",
-                        "Intake upgrades",
-                        "Transmission tune",
-                        "Ethanol blend",
-                        "Cooling / heat-management inspection"
-                    ],
-                    "Ethanol blend",
-                    false,
-                    false,
-                    "High"
-                ),
-
-                plan(
-                    2,
-                    850,
-                    7500,
-                    14000,
-                    "850-WHP S63TU4 setup",
-                    [
-                        "Upgraded turbos or aggressive stock-frame setup",
-                        "Fueling upgrades",
-                        "Custom tune",
-                        "Downpipes",
-                        "Transmission calibration",
-                        "Cooling upgrades"
-                    ],
-                    "Ethanol blend",
-                    false,
-                    false,
-                    "High"
-                ),
-
-                plan(
-                    2,
-                    900,
-                    10000,
-                    18000,
-                    "900-WHP S63TU4 setup",
-                    [
-                        "Upgraded turbos",
-                        "Full fueling support",
-                        "Custom ECU tune",
-                        "Transmission tune",
-                        "Cooling upgrades",
-                        "Heat-management upgrades",
-                        "Driveline inspection"
-                    ],
-                    "E85 / race fuel",
-                    false,
-                    false,
-                    "Moderate"
-                ),
-
-                plan(
-                    2,
-                    1000,
-                    15000,
-                    26000,
-                    "1000-WHP S63TU4 setup",
-                    [
-                        "High-output upgraded turbos",
-                        "Full fuel system",
-                        "Custom tuning",
-                        "Transmission upgrades",
-                        "Cooling upgrades",
-                        "Heat-management upgrades",
-                        "Driveline inspection",
-                        "Engine-health verification"
-                    ],
-                    "E85 / race fuel",
-                    false,
-                    true,
-                    "Moderate"
-                )
+                    notes:
+                        "Stock-long-block examples do not establish durability. Engine and transmission rebuild contingencies require separate assessment.",
+                    confidence: "medium"
+                })
             ],
-
             note:
-                "The F90 M5 starts with the high-performance S63TU4 and requires less modification than lower-tier " +
-                "5 Series models to reach very high power."
+                "Factory M starting point. Maintenance, tires, brakes and transfer-case/driveline condition need their own budget."
         },
-
-        // ========================================================
-        // F90 M5 COMPETITION
-        // ========================================================
-
         {
-            id: "m5comp-s63tu4",
+            id: "m5-comp",
             name: "BMW M5 Competition",
             generation: "F90",
             years: "2019–2023",
-
-            engine: "S63 4.4L twin-turbo V8",
-            engineCode: "S63B44T4",
-            engineGeneration: "S63TU4",
-
-            transmission: "ZF 8HP M Steptronic",
-
-            startingPrice: 50000,
-
+            engine: "S63B44T4",
+            engineFamily: "S63",
+            engineRevision: "S63TU4 — Competition calibration/spec",
+            transmission: "ZF 8HP76X M Steptronic / M xDrive",
+            startingPrice: 48000,
             drivetrains: ["awd"],
-
-            stockWhp: [570, 630],
-
+            stockWhp: [560, 610],
             traits: {
-                cost: 1,
-                comfort: 3.5,
+                cost: 1.2,
+                comfort: 3.7,
                 tuning: 4.5,
-                performance: 4.9,
-                track: 4.8,
+                performance: 4.8,
+                track: 4.7,
                 rarity: 3.5
             },
-
             builds: [
-
-                plan(
-                    1,
-                    675,
-                    2000,
-                    4500,
-                    "Stage 1 M5 Competition setup",
-                    [
-                        "ECU tune",
-                        "Transmission tune",
-                        "Maintenance baseline"
-                    ],
-                    "93 octane",
-                    false,
-                    false,
-                    "High"
-                ),
-
-                plan(
-                    1,
-                    775,
-                    3500,
-                    7000,
-                    "Full bolt-on M5 Competition setup",
-                    [
-                        "ECU tune",
-                        "Downpipes",
-                        "Intake upgrades",
-                        "Transmission tune",
-                        "Ethanol blend",
-                        "Cooling inspection"
-                    ],
-                    "Ethanol blend",
-                    false,
-                    false,
-                    "High"
-                ),
-
-                plan(
-                    2,
-                    850,
-                    7500,
-                    14000,
-                    "850-WHP M5 Competition setup",
-                    [
-                        "Upgraded turbos",
-                        "Fueling upgrades",
-                        "Custom ECU tuning",
-                        "Transmission calibration",
-                        "Cooling upgrades"
-                    ],
-                    "Ethanol blend",
-                    false,
-                    false,
-                    "High"
-                ),
-
-                plan(
-                    2,
-                    900,
-                    10000,
-                    18000,
-                    "900-WHP M5 Competition setup",
-                    [
-                        "High-output turbo system",
-                        "Full fueling support",
-                        "Custom tuning",
-                        "Transmission tune",
-                        "Cooling upgrades",
-                        "Heat management"
-                    ],
-                    "E85 / race fuel",
-                    false,
-                    false,
-                    "Moderate"
-                ),
-
-                plan(
-                    2,
-                    1000,
-                    15000,
-                    26000,
-                    "1000-WHP M5 Competition setup",
-                    [
-                        "High-output upgraded turbos",
-                        "Full fuel system",
-                        "Custom ECU tune",
-                        "Transmission upgrades",
-                        "Cooling upgrades",
-                        "Heat-management upgrades",
-                        "Driveline inspection",
-                        "Engine-health verification"
-                    ],
-                    "E85 / race fuel",
-                    false,
-                    true,
-                    "Moderate"
-                )
+                plan(1, 650, 1200, 3200, "Tune + basic supporting mods"),
+                plan(2, 750, 3000, 6500, "Ethanol-blend / bolt-on 750-WHP setup"),
+                plan(2, 850, 6000, 11000, "Upgraded-turbo / fueling 850-WHP build"),
+                plan(2, 900, 8000, 14000, "900-WHP upgraded-turbo build"),
+                plan(2, 1000, 12000, 24000, "1000-WHP S63TU4 turbo/fueling build", {
+                    notes:
+                        "The Competition trim does not remove the supporting work required for this output.",
+                    confidence: "medium"
+                })
             ],
-
             note:
-                "The Competition uses the same S63TU4 engine family as the standard F90 M5, " +
-                "with different factory calibration and chassis specification."
+                "Competition changes the factory calibration/chassis specification, but it still uses S63TU4. Assess the actual car's condition and equipment."
         },
-
-        // ========================================================
-        // M5 CS
-        // ========================================================
-
         {
-            id: "m5cs-s63tu4",
+            id: "m5-cs",
             name: "BMW M5 CS",
             generation: "F90",
             years: "2022",
-
-            engine: "S63 4.4L twin-turbo V8",
-            engineCode: "S63B44T4",
-            engineGeneration: "S63TU4",
-
-            transmission: "ZF 8HP M Steptronic",
-
-            startingPrice: 120000,
-
+            engine: "S63B44T4",
+            engineFamily: "S63",
+            engineRevision: "S63TU4 — CS calibration/spec",
+            transmission: "ZF 8HP76X M Steptronic / M xDrive",
+            startingPrice: 115000,
             drivetrains: ["awd"],
-
-            stockWhp: [590, 640],
-
+            stockWhp: [575, 620],
             traits: {
                 cost: 0.5,
-                comfort: 2.5,
-                tuning: 3,
+                comfort: 2.8,
+                tuning: 3.5,
                 performance: 5,
                 track: 5,
                 rarity: 5
             },
-
             builds: [
-
-                plan(
-                    1,
-                    675,
-                    2500,
-                    5000,
-                    "Stage 1 M5 CS setup",
-                    [
-                        "ECU tune",
-                        "Transmission tune",
-                        "Maintenance baseline"
-                    ],
-                    "93 octane",
-                    false,
-                    false,
-                    "High"
-                ),
-
-                plan(
-                    1,
-                    775,
-                    4000,
-                    7500,
-                    "Full bolt-on M5 CS setup",
-                    [
-                        "ECU tune",
-                        "Downpipes",
-                        "Intake upgrades",
-                        "Transmission tune",
-                        "Ethanol blend"
-                    ],
-                    "Ethanol blend",
-                    false,
-                    false,
-                    "High"
-                ),
-
-                plan(
-                    2,
-                    850,
-                    8000,
-                    15000,
-                    "850-WHP M5 CS setup",
-                    [
-                        "Upgraded turbos",
-                        "Fueling upgrades",
-                        "Custom tune",
-                        "Transmission calibration",
-                        "Cooling improvements"
-                    ],
-                    "Ethanol blend",
-                    false,
-                    false,
-                    "High"
-                ),
-
-                plan(
-                    2,
-                    900,
-                    11000,
-                    19000,
-                    "900-WHP M5 CS setup",
-                    [
-                        "High-output turbos",
-                        "Full fueling support",
-                        "Custom tuning",
-                        "Transmission tuning",
-                        "Cooling upgrades"
-                    ],
-                    "E85 / race fuel",
-                    false,
-                    false,
-                    "Moderate"
-                ),
-
-                plan(
-                    2,
-                    1000,
-                    16000,
-                    28000,
-                    "1000-WHP M5 CS setup",
-                    [
-                        "High-output turbo system",
-                        "Full fueling system",
-                        "Custom ECU tune",
-                        "Transmission upgrades",
-                        "Cooling upgrades",
-                        "Heat management",
-                        "Driveline inspection"
-                    ],
-                    "E85 / race fuel",
-                    false,
-                    true,
-                    "Moderate"
-                )
+                plan(1, 650, 1200, 3200, "Tune + basic supporting mods"),
+                plan(2, 750, 3000, 6500, "Ethanol-blend / bolt-on 750-WHP setup"),
+                plan(2, 850, 6000, 11000, "Upgraded-turbo / fueling 850-WHP build"),
+                plan(2, 900, 8000, 14000, "900-WHP upgraded-turbo build"),
+                plan(2, 1000, 12000, 24000, "1000-WHP S63TU4 turbo/fueling build", {
+                    notes:
+                        "Heavy modification can work against the CS's collectibility. Supporting-system requirements still apply.",
+                    confidence: "medium"
+                })
             ],
-
             note:
-                "The M5 CS is extremely capable but also collectible and expensive. " +
-                "Heavy modification can reduce originality and collector appeal."
+                "The CS is included as part of the F90 family. Its purchase price and collectibility can make it an expensive starting point for a heavily modified project."
         }
     ];
 
-    // ------------------------------------------------------------
-    // MODIFICATION LEVELS
-    // ------------------------------------------------------------
+    // RELIABILITY DATA
+    // These cutoffs are editable planning rules, not proven safe limits.
+    // Sources document inspection concerns or build context, not the cutoffs.
+    const m5Reliability = {
+        balancedMaxWhp: 750,
+        watch:
+            "Check expansion-tank campaign 24E-A01 by VIN and inspect for coolant contamination around injectors.",
+        source:
+            "https://static.nhtsa.gov/odi/tsbs/2024/MC-11002676-0001.pdf"
+    };
+
+    const reliabilityProfiles = {
+        "530-17-19": {
+            balancedMaxWhp: 300,
+            watch:
+                "Inspect the oil-filter housing and cooling system for leaks; investigate rough running.",
+            source:
+                "https://www.reddit.com/r/BmwTech/comments/1symuk0/b46_oil_filter_housing_diy_extras/"
+        },
+        "530-20-23": {
+            balancedMaxWhp: 300,
+            watch:
+                "Inspect the oil-filter housing and cooling system. Check SIB 11 10 25 applicability for the exact engine.",
+            source:
+                "https://static.nhtsa.gov/odi/tsbs/2026/MC-11026946-0001.pdf"
+        },
+        "540-gen1": {
+            balancedMaxWhp: 700,
+            watch:
+                "At higher output, verify turbo, fueling, cooling and a torque plan for the actual gearbox. A turbo's power rating does not establish whole-car durability.",
+            source:
+                "https://pureturbos.com/products/pure800-new-bmw-b58-gen-1"
+        },
+        "540-tu": {
+            balancedMaxWhp: 700,
+            watch:
+                "Verify the exact B58TU hardware and gearbox. The 700-WHP category is a provisional policy, not a durability result for this 540i.",
+            source:
+                "https://www.xautomotive.com/blogs/news/xhp-flash-settings"
+        },
+        "m550-tu2": {
+            balancedMaxWhp: 600,
+            watch:
+                "Check cooling-system repair history. SIB 17 06 17 covers the N63R G30 produced through May 31, 2018; confirm applicability.",
+            source:
+                "https://static.nhtsa.gov/odi/tsbs/2022/MC-10230724-9999.pdf"
+        },
+        "m550-tu3": {
+            balancedMaxWhp: 600,
+            watch:
+                "Inspect for coolant leakage and injector-area contamination. Check SIB 01 17 24 applicability by VIN.",
+            source:
+                "https://static.nhtsa.gov/odi/tsbs/2024/MC-11012076-0001.pdf"
+        },
+        "m5-base": m5Reliability,
+        "m5-comp": m5Reliability,
+        "m5-cs": m5Reliability
+    };
+
+    const reliabilityNames = {
+        dependable: "Dependability First",
+        balanced: "Balanced",
+        project: "Project Build",
+        unverified: "Unverified"
+    };
+
+    // Category order, not a score measuring failure probability.
+    const reliabilityRank = {
+        dependable: 0,
+        balanced: 1,
+        project: 2
+    };
+
+    function assessReliability(car, build) {
+        const profile = reliabilityProfiles[car.id];
+
+        if (!profile) {
+            return {
+                category: "unverified",
+                note: "This car has no researched profile yet.",
+                source: null
+            };
+        }
+
+        let category = "project";
+
+        if (build.level === 0) {
+            category = "dependable";
+        } else if (
+            !build.customOnly &&
+            build.whp <= profile.balancedMaxWhp
+        ) {
+            category = "balanced";
+        }
+
+        return {
+            category,
+            note: profile.watch,
+            source: profile.source
+        };
+    }
+
+    function fitsReliability(car, build, preference) {
+        const category = assessReliability(car, build).category;
+
+        return (
+            category !== "unverified" &&
+            reliabilityRank[category] <= reliabilityRank[preference]
+        );
+    }
 
     const levels = {
         stock: 0,
@@ -1484,62 +732,44 @@
     };
 
     const priorityNames = {
-        cost: "lower ownership and running costs",
+        cost: "lower running costs",
         comfort: "daily comfort",
         tuning: "modification potential",
-        performance: "performance",
-        track: "track capability",
-        rarity: "rarity and collectibility"
+        performance: "factory performance",
+        track: "track driving",
+        rarity: "collectibility"
     };
 
     const useNames = {
         daily: "daily driving",
-        roll: "closed-course roll racing",
+        roll: "closed-course roll events",
         dig: "drag-strip launches",
-        both: "roll and drag-strip use",
+        both: "roll and drag-strip events",
         track: "circuit track days"
     };
 
-    // ------------------------------------------------------------
-    // MONEY HELPERS
-    // ------------------------------------------------------------
-
-    const money = value =>
-        "$" + Math.round(value).toLocaleString("en-US");
+    const money = value => "$" + value.toLocaleString("en-US");
 
     const moneyRange = (low, high) =>
-        low === high
-            ? money(low)
-            : money(low) + "–" + money(high);
+        low === high ? money(low) : money(low) + "–" + money(high);
 
-    // ------------------------------------------------------------
-    // CAR EVALUATION
-    // ------------------------------------------------------------
-
+    // Checks one car against the user's answers.
     function evaluateCar(car, answers) {
+        const reject = reason => ({ car, reason });
 
-        const reject = reason => ({
-            car,
-            reason
-        });
-
-        // Purchase budget
         if (answers.budget < car.startingPrice) {
             return reject(
-                "Purchase budget is below this profile's estimated starting price of " +
-                money(car.startingPrice) +
-                "."
+                "Below this profile's " +
+                    money(car.startingPrice) +
+                    " purchase-price estimate."
             );
         }
 
-        // Drivetrain
         if (
             answers.drivetrain !== "any" &&
             !car.drivetrains.includes(answers.drivetrain)
         ) {
-            return reject(
-                "This model does not match the requested factory drivetrain."
-            );
+            return reject("Does not match your requested factory drivetrain.");
         }
 
         const stock = plan(
@@ -1548,64 +778,75 @@
             0,
             0,
             "Keep it stock",
-            ["No performance modifications required"],
-            "Factory fuel",
-            false,
-            false,
-            "High"
+            {
+                fuel: "BMW-recommended premium fuel",
+                confidence: "medium"
+            }
         );
 
-        const allowed = [stock, ...car.builds].filter(item =>
-            item.level <= levels[answers.mods]
+        // First filter by modification level.
+        const modAllowed = [stock, ...car.builds].filter(
+            item => item.level <= levels[answers.mods]
+        );
+
+        // Then filter by reliability preference.
+        const allowed = modAllowed.filter(
+            item => fitsReliability(car, item, answers.reliability)
+        );
+
+        if (!allowed.length) {
+            return reject(
+                "No assessed plan matches your reliability preference."
+            );
+        }
+
+        if (
+            answers.power !== null &&
+            modAllowed.some(item => item.whp >= answers.power) &&
+            !allowed.some(item => item.whp >= answers.power)
+        ) {
+            return reject(
+                "Your WHP goal exceeds this profile's " +
+                    reliabilityNames[answers.reliability] +
+                    " planning range."
+            );
+        }
+
+        const affordable = allowed.filter(
+            item => item.low <= answers.modBudget
         );
 
         let selected = stock;
 
-        // --------------------------------------------------------
-        // WHP GOAL
-        // --------------------------------------------------------
-
         if (answers.power !== null) {
-
-            const capable = allowed.filter(item =>
-                answers.power <= item.whp
+            const capable = allowed.filter(
+                item => answers.power <= item.whp
             );
 
             if (!capable.length) {
                 return reject(
                     "No " +
-                    answers.power +
-                    "-WHP build is modeled at your selected modification level."
+                        answers.power +
+                        "-WHP plan is modeled for your selected modification level."
                 );
             }
 
-            selected = capable.sort((a, b) => {
-                return (
-                    a.whp - b.whp ||
-                    a.low - b.low
-                );
-            })[0];
+            const fits = capable.filter(
+                item => item.low <= answers.modBudget
+            );
+
+            selected = (fits.length ? fits : capable)
+                .sort((a, b) => a.whp - b.whp || a.low - b.low)[0];
         }
 
-        // --------------------------------------------------------
-        // BEST AFFORDABLE UPGRADE
-        // --------------------------------------------------------
-
-        const affordable = allowed.filter(item =>
-            item.low <= answers.modBudget
+        // Future suggestions also obey the reliability filter.
+        const upgrade = affordable.reduce(
+            (best, item) => item.whp > best.whp ? item : best,
+            stock
         );
 
-        const upgrade = affordable.reduce((best, item) => {
-            return item.whp > best.whp ? item : best;
-        }, stock);
-
-        // --------------------------------------------------------
-        // DRIVETRAIN CHOICE
-        // --------------------------------------------------------
-
         const launchUse =
-            answers.use === "dig" ||
-            answers.use === "both";
+            answers.use === "dig" || answers.use === "both";
 
         const chosenDrive =
             answers.drivetrain !== "any"
@@ -1616,24 +857,14 @@
                         ? "awd"
                         : "any";
 
-        // --------------------------------------------------------
-        // SCORE
-        // --------------------------------------------------------
-
-        const speed =
-            Math.min(5, upgrade.whp / 150);
+        // Rank the selected build, not an unrelated future upgrade.
+        const speed = Math.min(5, selected.whp / 160);
 
         const useScore = {
             daily: car.traits.comfort,
             roll: speed,
-            dig:
-                speed +
-                (chosenDrive === "awd" ? 2 : 0),
-
-            both:
-                speed +
-                (chosenDrive === "awd" ? 1.5 : 0),
-
+            dig: speed + (chosenDrive === "awd" ? 2 : 0),
+            both: speed + (chosenDrive === "awd" ? 1.5 : 0),
             track: car.traits.track
         }[answers.use];
 
@@ -1646,30 +877,23 @@
             answers.modBudget > 0 &&
             answers.priority !== "performance"
         ) {
-            score += car.traits.tuning;
+            score += car.traits.tuning * 0.75;
         }
 
         if (answers.power !== null) {
-
-            // Reward cars that reach the goal with fewer modifications.
             score -= selected.level * 2;
-
-            // Reward cheaper ways of reaching the same target.
-            score -= selected.low / 10000;
-
-            // Penalize huge overkill slightly.
-            score -=
-                Math.max(
-                    0,
-                    selected.whp - answers.power
-                ) / 200;
         }
 
-        if (
-            answers.priority === "rarity" &&
-            selected.level > 0
-        ) {
-            score -= 5;
+        if (answers.priority === "rarity" && selected.level > 0) {
+            score -= 6;
+        }
+
+        if (selected.customOnly && answers.priority === "cost") {
+            score -= 10;
+        }
+
+        if (selected.engineBuild && answers.use === "daily") {
+            score -= 4;
         }
 
         return {
@@ -1678,66 +902,82 @@
             upgrade,
             chosenDrive,
             score,
-
-            modificationBudgetShortfall:
-                Math.max(
-                    0,
-                    selected.low - answers.modBudget
-                ),
-
-            selectedFitsBudget:
-                selected.low <= answers.modBudget,
-
-            totalLow:
-                car.startingPrice + selected.low,
-
-            totalHigh:
-                car.startingPrice + selected.high
+            needsQuote: selected.high > answers.modBudget,
+            totalLow: car.startingPrice + selected.low
         };
     }
 
-    // ------------------------------------------------------------
-    // RECOMMEND
-    // ------------------------------------------------------------
-
+    // Evaluates every car and sorts the remaining matches.
     function recommend(answers) {
-
-        const checked =
-            cars.map(car =>
-                evaluateCar(car, answers)
-            );
+        const checked = cars.map(
+            car => evaluateCar(car, answers)
+        );
 
         const ranked = checked
-
             .filter(item => !item.reason)
-
-            .sort((a, b) => {
-
-                // Affordable builds first
-                return (
-                    Number(!a.selectedFitsBudget) -
-                    Number(!b.selectedFitsBudget) ||
-
-                    // Then overall score
+            .sort(
+                (a, b) =>
+                    Number(a.needsQuote) - Number(b.needsQuote) ||
                     b.score - a.score ||
-
-                    // Then lower total cost
                     a.totalLow - b.totalLow
-                );
-            });
+            );
 
         return {
             matches: ranked,
-            excluded:
-                checked.filter(item => item.reason)
+            excluded: checked.filter(item => item.reason)
         };
     }
 
-    // ------------------------------------------------------------
-    // APP
-    // ------------------------------------------------------------
-
     function startPicker() {
+        // Adds the dropdown if the HTML does not already contain it.
+        if (!document.getElementById("reliability")) {
+            const priorityField =
+                document.getElementById("priority")?.closest(".field");
+
+            if (priorityField) {
+                const field = document.createElement("div");
+                field.className = "field";
+
+                const label = document.createElement("label");
+                label.htmlFor = "reliability";
+                label.textContent = "Reliability Preference";
+
+                const select = document.createElement("select");
+                select.id = "reliability";
+                select.setAttribute(
+                    "aria-describedby",
+                    "reliability-help"
+                );
+
+                const options = [
+                    ["", "Select your reliability preference"],
+                    ["dependable", "Dependability First"],
+                    ["balanced", "Balanced — Extra Upkeep Is OK"],
+                    ["project", "Project Build — Downtime Is OK"]
+                ];
+
+                for (const [value, text] of options) {
+                    const option = document.createElement("option");
+                    option.value = value;
+                    option.textContent = text;
+
+                    if (value === "") {
+                        option.disabled = true;
+                        option.selected = true;
+                    }
+
+                    select.appendChild(option);
+                }
+
+                const help = document.createElement("small");
+                help.id = "reliability-help";
+                help.textContent =
+                    "Matches engine-specific build estimates; actual vehicle condition needs checking.";
+
+                field.append(label, select, help);
+                priorityField.insertAdjacentElement("afterend", field);
+            }
+        }
 
         const ids = [
             "budget",
@@ -1746,126 +986,55 @@
             "power",
             "drivetrain",
             "use",
-            "modBudget"
+            "modBudget",
+            "reliability"
         ];
 
-        const fields =
-            Object.fromEntries(
-                ids.map(id => [
-                    id,
-                    document.getElementById(id)
-                ])
-            );
+        const fields = Object.fromEntries(
+            ids.map(id => [id, document.getElementById(id)])
+        );
 
-        const button =
-            document.getElementById("find-car");
+        const button = document.getElementById("find-car");
+        const results = document.getElementById("results");
+        const missing = ids.filter(id => !fields[id]);
 
-        const results =
-            document.getElementById("results");
-
-        const missing =
-            ids.filter(id => !fields[id]);
-
-        if (
-            !button ||
-            !results ||
-            missing.length
-        ) {
+        if (!button || !results || missing.length) {
             console.error(
-                "Picker requires HTML IDs: " +
-                "find-car, results, " +
-                ids.join(", ") +
-                ". Missing: " +
-                missing.join(", ")
+                "Picker needs the HTML IDs: find-car, results, " +
+                    ids.join(", ") +
+                    ". Missing: " +
+                    missing.join(", ")
             );
-
             return;
         }
 
         results.style.gridColumn = "1 / -1";
-
-        results.setAttribute(
-            "aria-live",
-            "polite"
-        );
-
-        results.setAttribute(
-            "tabindex",
-            "-1"
-        );
+        results.setAttribute("aria-live", "polite");
+        results.setAttribute("tabindex", "-1");
 
         let hasResults = false;
 
-        // --------------------------------------------------------
-        // SAFE ELEMENT CREATION
-        // --------------------------------------------------------
-
-        function add(
-            tag,
-            text,
-            parent = results
-        ) {
-
-            const element =
-                document.createElement(tag);
-
+        // Creates a text element and places it in the results.
+        function add(tag, text, parent = results) {
+            const element = document.createElement(tag);
             element.textContent = text;
-
             parent.appendChild(element);
-
             return element;
         }
 
-        function addList(
-            items,
-            parent
-        ) {
-
-            const list =
-                document.createElement("ul");
-
-            parent.appendChild(list);
-
-            items.forEach(item => {
-                add("li", item, list);
-            });
-
-            return list;
-        }
-
-        // --------------------------------------------------------
-        // ERRORS
-        // --------------------------------------------------------
-
-        function error(
-            message,
-            id
-        ) {
-
+        function error(message, id) {
             results.replaceChildren();
-
             add("p", message);
-
             fields[id].focus();
-
             hasResults = false;
-
             return null;
         }
 
-        // --------------------------------------------------------
-        // READ INPUT
-        // --------------------------------------------------------
-
+        // Reads and validates the form fields.
         function readAnswers() {
-
             const answers = {};
 
-            for (
-                const id of
-                ["budget", "modBudget", "power"]
-            ) {
-
+            for (const id of ["budget", "modBudget", "power"]) {
                 const input = fields[id];
 
                 if (
@@ -1877,13 +1046,8 @@
                     continue;
                 }
 
-                const value =
-                    Number(input.value);
-
-                const minimum =
-                    id === "modBudget"
-                        ? 0
-                        : 1;
+                const value = Number(input.value);
+                const minimum = id === "modBudget" ? 0 : 1;
 
                 if (
                     input.value.trim() === "" ||
@@ -1891,27 +1055,24 @@
                     !Number.isSafeInteger(value) ||
                     value < minimum
                 ) {
-
                     const label =
                         id === "budget"
                             ? "purchase budget"
-
                             : id === "power"
                                 ? "WHP goal"
-
                                 : "modification budget";
 
                     return error(
                         "Enter a whole-number " +
-                        label +
-                        " of at least " +
-                        minimum +
-                        "." +
-                        (
-                            id === "power"
-                                ? " You can also leave the WHP goal blank."
-                                : ""
-                        ),
+                            label +
+                            " of at least " +
+                            minimum +
+                            "." +
+                            (
+                                id === "power"
+                                    ? " You can also leave the WHP goal blank."
+                                    : ""
+                            ),
                         id
                     );
                 }
@@ -1919,64 +1080,46 @@
                 answers[id] = value;
             }
 
+            if (answers.power !== null && answers.power > 1000) {
+                return error(
+                    "This picker is modeled through 1000 WHP. Enter 1000 WHP or less.",
+                    "power"
+                );
+            }
+
             const choices = {
-                priority:
-                    Object.keys(priorityNames),
-
-                mods:
-                    Object.keys(levels),
-
-                drivetrain:
-                    ["any", "rwd", "awd"],
-
-                use:
-                    Object.keys(useNames)
+                priority: Object.keys(priorityNames),
+                mods: Object.keys(levels),
+                drivetrain: ["any", "rwd", "awd"],
+                use: Object.keys(useNames),
+                reliability: Object.keys(reliabilityRank)
             };
 
-            for (
-                const [id, options]
-                of Object.entries(choices)
-            ) {
-
-                if (
-                    !options.includes(
-                        fields[id].value
-                    )
-                ) {
-
+            for (const [id, options] of Object.entries(choices)) {
+                if (!options.includes(fields[id].value)) {
                     const label = {
-                        priority:
-                            "main priority",
-
-                        mods:
-                            "modification level",
-
-                        drivetrain:
-                            "drivetrain",
-
-                        use:
-                            "main driving use"
+                        priority: "main priority",
+                        mods: "modification level",
+                        drivetrain: "drivetrain",
+                        use: "main driving use",
+                        reliability: "reliability preference"
                     }[id];
 
                     return error(
-                        "Choose your " +
-                        label +
-                        " first.",
+                        "Choose your " + label + " first.",
                         id
                     );
                 }
 
-                answers[id] =
-                    fields[id].value;
+                answers[id] = fields[id].value;
             }
 
             if (
                 answers.mods === "stock" &&
                 answers.modBudget !== 0
             ) {
-
                 return error(
-                    "For 'keep it stock', enter 0 for the modification budget or choose a modification level.",
+                    "For 'keep it stock', enter 0 as the modification budget. Or choose a modification level.",
                     "modBudget"
                 );
             }
@@ -1984,613 +1127,512 @@
             return answers;
         }
 
-        // --------------------------------------------------------
-        // BUILD DETAILS
-        // --------------------------------------------------------
+        function addList(title, values, parent) {
+            if (!values || !values.length) {
+                return;
+            }
 
-        function addBuildDetails(
-            selected,
-            article
-        ) {
+            add("p", title, parent);
 
-            const details =
-                document.createElement("details");
+            const ul = document.createElement("ul");
+            parent.appendChild(ul);
 
-            article.appendChild(details);
-
-            add(
-                "summary",
-                "Build details",
-                details
-            );
-
-            add(
-                "p",
-                "Estimated capability: up to approximately " +
-                selected.whp +
-                " WHP.",
-                details
-            );
-
-            add(
-                "p",
-                "Estimated modification cost: " +
-                moneyRange(
-                    selected.low,
-                    selected.high
-                ) +
-                ".",
-                details
-            );
-
-            add(
-                "p",
-                "Fuel assumption: " +
-                selected.fuel +
-                ".",
-                details
-            );
-
-            add(
-                "p",
-                "Engine build: " +
-                (
-                    selected.engineBuild
-                        ? "Recommended / expected at this level."
-                        : "Not automatically required by this model."
-                ),
-                details
-            );
-
-            add(
-                "p",
-                "Transmission build: " +
-                (
-                    selected.transmissionBuild
-                        ? "Recommended / expected."
-                        : "Stock hardware may be usable depending on torque, condition and calibration."
-                ),
-                details
-            );
-
-            add(
-                "p",
-                "Estimate confidence: " +
-                selected.confidence +
-                ".",
-                details
-            );
-
-            add(
-                "h4",
-                "Typical hardware / work",
-                details
-            );
-
-            addList(
-                selected.details,
-                details
+            values.forEach(
+                value => add("li", value, ul)
             );
         }
 
-        // --------------------------------------------------------
-        // SHOW ONE RESULT
-        // --------------------------------------------------------
+        // Builds one result card.
+        function explain(item, answers, index) {
+            const { car, selected, upgrade } = item;
 
-        function explain(
-            item,
-            answers,
-            index
-        ) {
-
-            const {
-                car,
-                selected,
-                upgrade
-            } = item;
-
-            const article =
-                document.createElement("article");
-
+            const article = document.createElement("article");
             results.appendChild(article);
 
             add(
                 "h3",
                 (
                     index === 0
-                        ? "Top match: "
+                        ? "Top starting point: "
                         : "Also consider: "
-                ) +
-                car.name,
+                ) + car.name,
                 article
             );
 
             const driveText =
                 item.chosenDrive === "awd"
-
-                    ? "AWD / xDrive"
-
+                    ? "Choose xDrive / AWD"
                     : item.chosenDrive === "rwd"
-
-                        ? "RWD"
-
-                        : "RWD or AWD";
+                        ? "Choose RWD"
+                        : "RWD or xDrive available";
 
             add(
                 "p",
                 car.generation +
-                " · " +
-                car.years +
-                " · " +
-                driveText,
+                    " · " +
+                    car.years +
+                    " · " +
+                    driveText,
                 article
             );
 
             add(
                 "p",
                 "Engine: " +
-                car.engine +
-                " · " +
-                car.engineCode +
-                " · " +
-                car.engineGeneration +
-                ".",
+                    car.engine +
+                    " · " +
+                    car.engineRevision +
+                    " · Transmission: " +
+                    car.transmission +
+                    ".",
                 article
             );
 
             add(
                 "p",
-                "Transmission: " +
-                car.transmission +
-                ".",
+                "Purchase starting estimate: " +
+                    money(car.startingPrice) +
+                    ". Modeled modification allowance: " +
+                    moneyRange(selected.low, selected.high) +
+                    ".",
+                article
+            );
+
+            if (selected.level > 0) {
+                add(
+                    "p",
+                    "Car + selected build using the purchase starting estimate: " +
+                        moneyRange(
+                            car.startingPrice + selected.low,
+                            car.startingPrice + selected.high
+                        ) +
+                        ". Taxes, fees, maintenance and surprise repairs are extra.",
+                    article
+                );
+            }
+
+            add(
+                "p",
+                "Why it appears: it clears the purchase, drivetrain and reliability-preference filters, then ranks for " +
+                    priorityNames[answers.priority] +
+                    " and " +
+                    useNames[answers.use] +
+                    ". " +
+                    car.note,
                 article
             );
 
             add(
                 "p",
-                "Approximate stock screening range: " +
-                car.stockWhp[0] +
-                "–" +
-                car.stockWhp[1] +
-                " WHP.",
+                "Approximate stock dyno screening band: " +
+                    car.stockWhp[0] +
+                    "–" +
+                    car.stockWhp[1] +
+                    " WHP. Dynos vary; this is not BMW's factory crank-horsepower rating.",
                 article
             );
 
+            // Reliability result and supporting context.
+            const reliability = assessReliability(car, selected);
+
             add(
                 "p",
-                "Estimated vehicle starting price: " +
-                money(car.startingPrice) +
-                ".",
+                "Reliability planning fit: " +
+                    reliabilityNames[reliability.category] +
+                    " — conditional.",
+                article
+            );
+
+            add("p", reliability.note, article);
+
+            add(
+                "p",
+                "Vehicle condition: unverified. Requires maintenance records, an inspection and no unresolved faults or leaks. Categories are project estimates, not failure-rate ratings.",
                 article
             );
 
             if (
-                answers.power !== null
+                selected.level > 0 ||
+                (answers.power === null && upgrade.level > 0)
             ) {
-
                 add(
                     "p",
-                    "Your goal: " +
-                    answers.power +
-                    " WHP.",
+                    "Conditions for any selected or future tuned route: suitable fuel and hardware, reviewed calibration logs, adequate cooling, and a gearbox/torque plan. Track use or repeated launches need a separate assessment.",
+                    article
+                );
+            }
+
+            if (reliability.source) {
+                const sourceLine = add("p", "", article);
+
+                const sourceLink = add(
+                    "a",
+                    "Source for inspection/build context",
+                    sourceLine
+                );
+
+                sourceLink.href = reliability.source;
+            }
+
+            if (answers.power !== null) {
+                add(
+                    "p",
+                    "Your " +
+                        answers.power +
+                        "-WHP goal maps to: " +
+                        selected.label +
+                        ". Planning confidence: " +
+                        selected.confidence +
+                        ".",
                     article
                 );
 
                 add(
                     "p",
-                    "Suggested build tier: " +
-                    selected.label +
-                    ".",
+                    "Fuel/calibration assumption: " +
+                        selected.fuel +
+                        ".",
                     article
                 );
 
-                add(
-                    "p",
-                    "Estimated modification allowance: " +
-                    moneyRange(
-                        selected.low,
-                        selected.high
-                    ) +
-                    ".",
+                addList(
+                    "Core hardware / work normally budgeted for this route:",
+                    selected.hardware,
                     article
                 );
 
-                add(
-                    "p",
-                    "Estimated car + build total: " +
-                    moneyRange(
-                        item.totalLow,
-                        item.totalHigh
-                    ) +
-                    " before taxes, registration, insurance, maintenance and unexpected repairs.",
-                    article
-                );
-
-                if (
-                    !item.selectedFitsBudget
-                ) {
-
+                if (selected.engineBuild) {
                     add(
                         "p",
-                        "Budget warning: this setup begins about " +
-                        money(
-                            item.modificationBudgetShortfall
-                        ) +
-                        " above your entered modification budget.",
+                        "Engine planning: this route includes or strongly budgets for a built/forged engine. A particular engine's durability still requires assessment.",
                         article
                     );
                 }
 
-                addBuildDetails(
-                    selected,
-                    article
-                );
-
-            } else {
-
-                add(
-                    "p",
-                    "No WHP goal was entered, so the recommendation is based primarily on your purchase budget, priorities and intended use.",
-                    article
-                );
-
-                if (
-                    upgrade.level > 0
-                ) {
-
+                if (selected.transmissionBuild) {
                     add(
                         "p",
-                        "With your current modification budget, a possible future build is: " +
-                        upgrade.label +
-                        ", targeting approximately " +
-                        upgrade.whp +
-                        " WHP.",
+                        "Transmission planning: this route includes a built-transmission/driveline allowance.",
                         article
                     );
+                }
 
-                    addBuildDetails(
-                        upgrade,
+                if (selected.customOnly) {
+                    add(
+                        "p",
+                        "Custom-build planning: shop choice, fabrication, fuel, calibration and condition can substantially change the cost and outcome.",
+                        article
+                    );
+                }
+
+                if (selected.notes) {
+                    add("p", selected.notes, article);
+                }
+
+                if (item.needsQuote) {
+                    add(
+                        "p",
+                        selected.low > answers.modBudget
+                            ? "Budget check: this plan starts around " +
+                                money(selected.low) +
+                                ", above your " +
+                                money(answers.modBudget) +
+                                " modification budget. This is a stretch match."
+                            : "Budget check: your " +
+                                money(answers.modBudget) +
+                                " covers only part of the build's estimated range. Get an itemized quote before treating it as affordable.",
+                        article
+                    );
+                }
+            } else {
+                add(
+                    "p",
+                    "No WHP goal entered: this recommendation starts with a stock car.",
+                    article
+                );
+
+                if (upgrade.level > 0) {
+                    add(
+                        "p",
+                        "Given your modification level, reliability preference and " +
+                            money(answers.modBudget) +
+                            " budget, the highest modeled future route whose starting estimate fits is: " +
+                            upgrade.label +
+                            " (" +
+                            moneyRange(upgrade.low, upgrade.high) +
+                            ").",
                         article
                     );
                 }
             }
 
-            add(
-                "p",
-                "Why it appears: " +
-                car.note,
-                article
-            );
-
-            if (
-                answers.use === "track"
-            ) {
-
+            if (answers.use === "track") {
                 add(
                     "p",
-                    "Track-use note: power should come after tires, brakes, brake fluid, alignment and cooling.",
+                    "For circuit use, assess tires, brake fluid/pads, cooling and oil-temperature control before adding power.",
+                    article
+                );
+            }
+
+            if (
+                (answers.use === "dig" || answers.use === "both") &&
+                selected.whp >= 700
+            ) {
+                add(
+                    "p",
+                    "For repeated drag-strip launches at this output, include transfer-case, axle, driveshaft and differential assessment in the build plan.",
+                    article
+                );
+            }
+
+            if (selected.whp >= 900) {
+                add(
+                    "p",
+                    "This is a high-output project requiring a specialist assessment of engine health, fuel delivery, calibration, cooling and drivetrain condition.",
                     article
                 );
             }
         }
 
-        // --------------------------------------------------------
-        // ENGINE GUIDE
-        // --------------------------------------------------------
-
-        function addEngineGuide() {
-
-            const details =
-                document.createElement("details");
-
+        function addEngineGlossary() {
+            const details = document.createElement("details");
             results.appendChild(details);
 
             add(
                 "summary",
-                "BMW engine generations / TU guide",
+                "B58 / N63 / S63 technical-update (TU) guide",
                 details
             );
 
-            Object.values(
-                engineGuide
-            ).forEach(family => {
+            for (const [family, entries] of Object.entries(engineGlossary)) {
+                add("h4", family.toUpperCase(), details);
+
+                const ul = document.createElement("ul");
+                details.appendChild(ul);
+
+                entries.forEach(
+                    entry => add("li", entry, ul)
+                );
+            }
+        }
+
+        function addSources() {
+            const details = document.createElement("details");
+            results.appendChild(details);
+
+            add(
+                "summary",
+                "Method, pricing basis and sources",
+                details
+            );
+
+            add(
+                "p",
+                "Purchase prices and build budgets are broad U.S. planning estimates. Exact costs depend on the car, supporting hardware, labor, maintenance and shop. Power targets require confirmation on the actual build.",
+                details
+            );
+
+            add(
+                "p",
+                "Reliability categories are adjustable project rules. Sources document inspection concerns and build context; they do not validate the numeric category cutoffs or predict an individual vehicle's failure rate.",
+                details
+            );
+
+            const sources = [
+                [
+                    "BMW: 2017 G30 540i factory technical information",
+                    "https://www.press.bmwgroup.com/usa/article/detail/T0264802EN_US/the-all-new-2017-bmw-5-series%3A-performance-redefined"
+                ],
+                [
+                    "BMW: B58TU technical training manual",
+                    "https://bmwtechinfo.bmwgroup.com/tech_training_manual/ST1853%20B58TU%20Engine.pdf"
+                ],
+                [
+                    "BMW: G30 LCI technical training manual",
+                    "https://bmwtechinfo.bmwgroup.com/tech_training_manual/ST2009%20G30%20LCI%20Complete%20Vehicle.pdf"
+                ],
+                [
+                    "BMW: N63TU technical training manual",
+                    "https://bmwtechinfo.bmwgroup.com/tech_training_manual/ST1209%20N63TU%20Engine.pdf"
+                ],
+                [
+                    "BMW: N63TU3 technical training manual",
+                    "https://bmwtechinfo.bmwgroup.com/tech_training_manual/ST1854%20N63TU3%20Engine.pdf"
+                ],
+                [
+                    "BMW: S63TU4 technical training manual",
+                    "https://bmwtechinfo.bmwgroup.com/tech_training_manual/ST1916%20S63TU4%20Engine.pdf"
+                ],
+                [
+                    "BimmerWorld: BMW engine/chassis code reference",
+                    "https://www.bimmerworld.com/About-Us/BMW-Chassis-Engine-Codes/"
+                ],
+                [
+                    "BimmerWorld: B46/B58 vs B46TU/B58TU",
+                    "https://www.bimmerworld.com/BMW-B46TU-B58TU-Differences/"
+                ],
+                [
+                    "BimmerWorld: N63 engine variants",
+                    "https://www.bimmerworld.com/About-Us/BMW-N63-Engine-Variations/"
+                ],
+                [
+                    "ECS: G30 540i turbo upgrade examples",
+                    "https://www.ecstuning.com/BMW-G30-540i-B58_3.0L/Engine/Turbocharger/Performance/"
+                ],
+                [
+                    "ECS: G30 M550i turbo upgrade examples",
+                    "https://www.ecstuning.com/BMW-G30-M550i_xDrive-N63_4.4L/Engine/Turbocharger/Performance/"
+                ],
+                [
+                    "Turner: F90 M5 turbo upgrade examples",
+                    "https://www.turnermotorsport.com/BMW-F90-M5/c-596-bmw-turbo-upgrades"
+                ],
+                [
+                    "RK Autowerks: S63 engine-build reference",
+                    "https://www.rkautowerks.com/wp-content/uploads/2020/06/S63-Engine-Build-Process-FAQ-0124.pdf"
+                ]
+            ];
+
+            const list = document.createElement("ul");
+            details.appendChild(list);
+
+            sources.forEach(([label, url]) => {
+                const row = document.createElement("li");
+                const link = add("a", label, row);
+
+                link.href = url;
+                link.target = "_blank";
+                link.rel = "noopener noreferrer";
+
+                list.appendChild(row);
+            });
+        }
+
+        // Runs when the user clicks the recommendation button.
+        button.addEventListener("click", () => {
+            const answers = readAnswers();
+
+            if (!answers) {
+                return;
+            }
+
+            const { matches, excluded } = recommend(answers);
+
+            results.replaceChildren();
+
+            add(
+                "h2",
+                matches.length
+                    ? "Your 5 Series matches"
+                    : "No estimated match for all your answers"
+            );
+
+            add(
+                "p",
+                "Purchase budget: " +
+                    money(answers.budget) +
+                    " · Modification budget: " +
+                    money(answers.modBudget) +
+                    " · WHP goal: " +
+                    (answers.power ?? "Not specified") +
+                    " · Reliability preference: " +
+                    reliabilityNames[answers.reliability]
+            );
+
+            add(
+                "p",
+                "Planning estimates only. Exact dyno output, installed cost and durability depend on the actual vehicle and build."
+            );
+
+            if (matches.length) {
+                matches.forEach(
+                    (item, index) => explain(item, answers, index)
+                );
+            } else {
+                add(
+                    "p",
+                    "Review the exclusions below. Your budgets, power goal, modification level, drivetrain or reliability preference may need adjusting."
+                );
+            }
+
+            if (answers.drivetrain === "rwd") {
+                add(
+                    "p",
+                    "RWD means a factory RWD car. F90 M5 models remain classified as AWD even though M xDrive provides a selectable 2WD mode."
+                );
+            }
+
+            if (excluded.length) {
+                const details = document.createElement("details");
+                details.open = matches.length === 0;
+                results.appendChild(details);
 
                 add(
-                    "h3",
-                    family.family,
+                    "summary",
+                    "Why other model/year profiles were excluded",
                     details
                 );
 
-                family.revisions.forEach(
-                    revision => {
+                const list = document.createElement("ul");
+                details.appendChild(list);
 
-                        add(
-                            "h4",
-                            revision.name,
-                            details
-                        );
-
-                        if (
-                            revision.codes
-                        ) {
-
-                            add(
-                                "p",
-                                revision.codes,
-                                details
-                            );
-                        }
-
-                        add(
-                            "p",
-                            revision.description,
-                            details
-                        );
-                    }
-                );
-            });
-
-            add(
-                "p",
-                "TU means Technical Update. BMW engine-generation naming is not always perfectly sequential across every engine family. Do not assume that a missing TU number represents an engine used in the same chassis.",
-                details
-            );
-
-            add(
-                "p",
-                "The newer S68 V8 is its own successor engine family and should not simply be described as N63TU4 or S63TU5.",
-                details
-            );
-        }
-
-        // --------------------------------------------------------
-        // ESTIMATE NOTES
-        // --------------------------------------------------------
-
-        function addEstimateNotes() {
-
-            const details =
-                document.createElement("details");
-
-            results.appendChild(details);
-
-            add(
-                "summary",
-                "How power and pricing estimates work",
-                details
-            );
-
-            add(
-                "p",
-                "All WHP figures are approximate wheel-horsepower targets. Dynos, fuel, weather, drivetrain loss, turbo selection and calibration can cause substantial differences.",
-                details
-            );
-
-            add(
-                "p",
-                "The cost ranges represent complete-build planning allowances rather than the price of a single turbo or tune.",
-                details
-            );
-
-            add(
-                "p",
-                "A complete build can include tuning, turbochargers, fuel-system components, cooling, labor, ECU unlocking, transmission work, drivetrain components and maintenance.",
-                details
-            );
-
-            add(
-                "p",
-                "At approximately 800-1000 WHP, engine and transmission condition become increasingly important. Two cars making the same peak power may require very different hardware depending on torque, fuel and intended use.",
-                details
-            );
-
-            add(
-                "p",
-                "Repeated drag racing, track use and aggressive launches can require more supporting hardware than a car primarily used for highway pulls or occasional street driving.",
-                details
-            );
-        }
-
-        // --------------------------------------------------------
-        // BUTTON
-        // --------------------------------------------------------
-
-        button.addEventListener(
-            "click",
-            () => {
-
-                const answers =
-                    readAnswers();
-
-                if (!answers) return;
-
-                const {
-                    matches,
-                    excluded
-                } = recommend(answers);
-
-                results.replaceChildren();
-
-                add(
-                    "h2",
-                    matches.length
-                        ? "Your BMW 5 Series matches"
-                        : "No exact match found"
-                );
-
-                add(
-                    "p",
-                    "Purchase budget: " +
-                    money(answers.budget) +
-
-                    " · Modification budget: " +
-                    money(answers.modBudget) +
-
-                    " · WHP goal: " +
-                    (
-                        answers.power ??
-                        "Not specified"
-                    )
-                );
-
-                add(
-                    "p",
-                    "These are planning estimates, not guaranteed dyno results or shop quotes."
-                );
-
-                if (
-                    matches.length
-                ) {
-
-                    matches.forEach(
-                        (item, index) =>
-                            explain(
-                                item,
-                                answers,
-                                index
-                            )
-                    );
-
-                } else {
-
+                excluded.forEach(item => {
                     add(
-                        "p",
-                        "Your combination of purchase budget, modification level, drivetrain and WHP target does not match a modeled build. Review the exclusions below."
+                        "li",
+                        item.car.name +
+                            " (" +
+                            item.car.years +
+                            ", " +
+                            item.car.engineRevision +
+                            "): " +
+                            item.reason,
+                        list
                     );
-                }
-
-                if (
-                    answers.drivetrain === "rwd"
-                ) {
-
-                    add(
-                        "p",
-                        "F90 M5 models are categorized as AWD because M xDrive is their factory drivetrain, even though the system includes a selectable rear-wheel-drive mode."
-                    );
-                }
-
-                if (
-                    excluded.length
-                ) {
-
-                    const details =
-                        document.createElement("details");
-
-                    details.open =
-                        matches.length === 0;
-
-                    results.appendChild(details);
-
-                    add(
-                        "summary",
-                        "Why other models were excluded",
-                        details
-                    );
-
-                    const list =
-                        document.createElement("ul");
-
-                    details.appendChild(list);
-
-                    excluded.forEach(
-                        item => {
-
-                            add(
-                                "li",
-                                item.car.name +
-                                " (" +
-                                item.car.years +
-                                "): " +
-                                item.reason,
-                                list
-                            );
-                        }
-                    );
-                }
-
-                addEngineGuide();
-
-                addEstimateNotes();
-
-                hasResults = true;
-
-                results.focus();
+                });
             }
-        );
 
-        // --------------------------------------------------------
-        // RESET RESULTS WHEN INPUT CHANGES
-        // --------------------------------------------------------
+            addEngineGlossary();
+            addSources();
 
-        ids.forEach(id => {
-
-            fields[id].addEventListener(
-                "input",
-                () => {
-
-                    if (
-                        hasResults
-                    ) {
-
-                        results.replaceChildren();
-
-                        add(
-                            "p",
-                            "Answers changed. Click Find My 5 Series to update your matches."
-                        );
-
-                        hasResults = false;
-                    }
-                }
-            );
+            hasResults = true;
+            results.focus();
         });
 
-        // --------------------------------------------------------
-        // ENTER KEY SUPPORT
-        // --------------------------------------------------------
+        // Prevents old results from looking current after an answer changes.
+        ids.forEach(id => {
+            fields[id].addEventListener("input", () => {
+                if (hasResults) {
+                    results.replaceChildren();
 
-        [
-            "budget",
-            "power",
-            "modBudget"
-        ].forEach(id => {
+                    add(
+                        "p",
+                        "Answers changed. Click Find My 5 Series to update your matches."
+                    );
 
-            fields[id].addEventListener(
-                "keydown",
-                event => {
-
-                    if (
-                        event.key === "Enter"
-                    ) {
-
-                        event.preventDefault();
-
-                        button.click();
-                    }
+                    hasResults = false;
                 }
-            );
+            });
+        });
+
+        // Lets Enter submit from the number fields.
+        ["budget", "power", "modBudget"].forEach(id => {
+            fields[id].addEventListener("keydown", event => {
+                if (event.key === "Enter") {
+                    event.preventDefault();
+                    button.click();
+                }
+            });
         });
     }
 
-    // ------------------------------------------------------------
-    // START
-    // ------------------------------------------------------------
-
-    if (
-        document.readyState === "loading"
-    ) {
-
+    // Waits until the HTML is available before connecting the picker.
+    if (document.readyState === "loading") {
         document.addEventListener(
             "DOMContentLoaded",
             startPicker,
-            {
-                once: true
-            }
+            { once: true }
         );
-
     } else {
-
         startPicker();
     }
-
 })();
